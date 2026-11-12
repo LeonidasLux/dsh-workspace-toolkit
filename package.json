@@ -1,0 +1,40 @@
+{
+  "name": "@local/workspace-toolkit",
+  "version": "3.0.0",
+  "private": true,
+  "description": "工作区工具箱：围绕 DSH 工作区的一站式增强——按工作区配置模型、按工作区汇总 Token 用量、自定义模型供应商，并以原生槽位 + 原生右键菜单 + 追加式装饰增强左侧工作区（展开/收起全部、置顶、备注、标题颜色、Token 标签），不替换任何原生界面",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "locale/en.json",
+    "locale/zh.json",
+    "icon.svg",
+    "test/host-contract.test.mjs",
+    "test/client-render.test.mjs",
+    "PLUGIN-SPEC.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-context-menu"
+      ]
+    }
+  }
+}
