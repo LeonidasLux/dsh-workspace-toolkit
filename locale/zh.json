@@ -57,7 +57,6 @@
   "overview.workspacesEmpty": "还没有工作区。",
   "overview.lastUpdated": "上次更新：{time}",
   "overview.workspacesCount": "工作区数",
-  "decorator.tokensTitle": "该工作区的 Token 合计",
   "decorator.modelTitle": "该工作区配置的模型",
   "decorator.toggleExpand": "展开全部工作区",
   "decorator.toggleCollapse": "收起全部工作区",

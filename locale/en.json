@@ -57,7 +57,6 @@
   "overview.workspacesEmpty": "No workspaces yet.",
   "overview.lastUpdated": "Last updated: {time}",
   "overview.workspacesCount": "Workspaces",
-  "decorator.tokensTitle": "Token total for this workspace",
   "decorator.modelTitle": "Model configured for this workspace",
   "decorator.toggleExpand": "Expand all workspaces",
   "decorator.toggleCollapse": "Collapse all workspaces",

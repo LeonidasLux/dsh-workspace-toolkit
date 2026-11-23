@@ -28,6 +28,8 @@ const workspaces = [
   { id: 'ws-c', path: '/home/me/proj-c', title: 'Project C', createdAt: 'c', updatedAt: 'u', sessionIds: [] },
 ]
 
+const observeCalls = []
+const listCalls = []
 const sessionTotals = {
   s1: { inputTokens: 100, outputTokens: 10, totalTokens: 200, cacheReadTokens: 90, cacheWriteTokens: 0, reasoningTokens: 0 },
   s2: { inputTokens: 300, outputTokens: 30, totalTokens: 400, cacheReadTokens: 70, cacheWriteTokens: 0, reasoningTokens: 0 },
@@ -115,18 +117,24 @@ const ctx = {
     },
   },
   sessionQuery: {
-    listSessions: async () => [
-      { header: { id: 's1', cwd: '/home/me/proj-a' } },
-      { header: { id: 's2', cwd: '/home/me/proj-a' } },
-    ],
-    observeSession: async (sessionId) => ({
-      cursor: 10,
-      inheritedEventCount: 0,
-      events: [
-        { type: 'user/message', seq: 1, data: {} },
-        { type: 'assistant/message', seq: 2, data: { usage: sessionTotals[sessionId] } },
-      ],
-    }),
+    listSessions: async () => {
+      listCalls.push(1)
+      return [
+        { header: { id: 's1', cwd: '/home/me/proj-a' } },
+        { header: { id: 's2', cwd: '/home/me/proj-a' } },
+      ]
+    },
+    observeSession: async (sessionId) => {
+      observeCalls.push(sessionId)
+      return {
+        cursor: 10,
+        inheritedEventCount: 0,
+        events: [
+          { type: 'user/message', seq: 1, data: {} },
+          { type: 'assistant/message', seq: 2, data: { usage: sessionTotals[sessionId] } },
+        ],
+      }
+    },
   },
   llm: {
     listProviders: async () => [{ id: 'deepseek-official', name: 'DeepSeek' }, { id: 'acme', name: 'ACME' }],
@@ -178,10 +186,14 @@ assert(base.models.providers.length === 2 && base.models.providers[1].models[0].
 assert(base.settings.showSidebarEntry === true, 'sidebar entry shown by default')
 
 // 3. per-workspace token usage -----------------------------------------
-const wsAUsage = findWs(base, 'ws-a').usage
-assert(wsAUsage.totalTokens === 600 && wsAUsage.inputTokens === 400 && wsAUsage.sessions === 2, 'token usage aggregated per workspace from session logs')
-assert(findWs(base, 'ws-a').sessionCount === 2, 'session count exposed per workspace')
-assert(findWs(base, 'ws-b').usage.totalTokens === 0, 'workspace without sessions has zero usage')
+assert(observeCalls.length === 0 && listCalls.length === 0, 'plain snapshot never touches the session store')
+assert(findWs(base, 'ws-a').usage.totalTokens === 0 && base.usageAt === null, 'plain snapshot carries no token usage')
+const usageSnap = (await call('/workspace-toolkit/snapshot', getReq('?usage=1'))).json
+const wsAUsage = findWs(usageSnap, 'ws-a').usage
+assert(wsAUsage.totalTokens === 600 && wsAUsage.inputTokens === 400 && wsAUsage.sessions === 2, 'token usage aggregated per workspace on ?usage=1')
+assert(typeof usageSnap.usageAt === 'string', '?usage=1 stamps usageAt')
+assert(findWs(usageSnap, 'ws-a').sessionCount === 2, 'session count exposed per workspace')
+assert(findWs(usageSnap, 'ws-b').usage.totalTokens === 0, 'workspace without sessions has zero usage')
 
 // 4. meta: model / note / color validation ------------------------------
 const setModel = await call('/workspace-toolkit/meta', jsonBody({ workspaceId: 'ws-a', patch: { model: { provider: 'acme', model: 'acme-large' }, note: '备注测试', color: '#3b82f6' } }))
@@ -288,7 +300,9 @@ assert(Array.isArray(raw.global.pinnedOrder) && raw.global.pinnedOrder.join(',')
 assert(raw.global.settings.showSidebarEntry === true, 'global settings stored on disk')
 
 // 10. usage cache survives repeated snapshots --------------------------
+const observeBefore = observeCalls.length
 const cachedSnap = await snapshot()
+assert(observeCalls.length === observeBefore, 'plain snapshot reuses the cached usage without rescanning')
 assert(cachedSnap.workspaces.find((workspace) => workspace.workspaceId === 'ws-a').usage.totalTokens === 600, 'usage stable across repeated snapshots')
 
 // 10b. 新建工作区会被 prepend 到队首；置顶块必须回到最前面 ---------------

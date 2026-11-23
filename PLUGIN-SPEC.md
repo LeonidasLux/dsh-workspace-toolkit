@@ -36,7 +36,8 @@
 ## 3. Host 契约（index.js 实现，客户端按此消费）
 所有路由同源，前缀 `/workspace-toolkit`（沿用旧实现，`ctx.webServer.register({kind:'exact', path, handler})`）。
 
-### GET /workspace-toolkit/snapshot?force=1
+### GET /workspace-toolkit/snapshot[?usage=1]
+不带参数只返回工作区元数据（不扫会话日志，`usage` 全零、`usageAt` 为 `null`）；带 `?usage=1` 才统计一次 Token 用量并缓存，后续不带参数的快照复用该缓存。
 ```json
 {
   "ok": true,
@@ -92,11 +93,10 @@ body: `{ "patch": { "showSidebarEntry": boolean } }` → 返回 snapshot。
 4. `main`（keyed，`key: 'workspace-toolkit'`），总览面板：全部工作区表格（名称/路径/模型/置顶/备注/颜色/会话数/totalTokens，可排序或直接按 registry 顺序）、全局汇总（总 token、按 provider/model 汇总可选）、「全部展开/收起」（调用装饰器方法）、刷新 + 最后更新时间。
 
 ### 4.2 原生侧边栏装饰层（核心，独立在 client.js 内名为 `createDecorator(ctx, ...)`）
-- 数据：轮询 snapshot（20s；`document.visibilityState === 'visible'` 才轮询；收到 POST 响应后立即刷新）。
+- 数据：不轮询。挂载时与 `visibilitychange` 变为可见时各取一次元数据快照；Token 用量只在打开设置页 / 总览面板时以 `?usage=1` 计算一次。
 - 装饰对象：`[role="treeitem"][data-row-key^="workspace:"]`（工作区行）与 `[class*="_sectionHeader"]`（区块头）。
 - 对每个工作区行：
   - 若 `note` 非空 → 在 `[class*="_projectText"]` 内 `.title` **之后** append `<span data-wtk="note">`，文案 `（note）`，样式：12px、`--dsw-alias-label-tertiary`、ellipsis、不换行。
-  - 追加 `<span data-wtk="tokens">` 显示 compact token（`1.2k` / `3.4M`），11px、tertiary；`usage.totalTokens === 0` 时不渲染。
   - 有 `model` 配置时追加 `<span data-wtk="model">` 显示 `model.model`（若太长截断 12 字符）；无配置不渲染（跟随当前模型）。
   - 颜色：**不写行内样式到原生节点**，而是把 `[data-row-key="workspace:<id>"] [class*="_title"]{color:<color>}` 规则写进自建 `<style data-wtk="styles">`（每次数据更新重算全部规则）。
   - 幂等：装饰前先查询 `[data-wtk]` 是否已存在（用 `[data-wtk-for="<workspaceId>"]` 归属标记），已存在则只更新文本，不重复 append。
@@ -107,7 +107,7 @@ body: `{ "patch": { "showSidebarEntry": boolean } }` → 返回 snapshot。
 
 ### 4.3 交互
 - 置顶：面板里 switch → POST /meta {pinned}；成功后刷新 snapshot 并提示（无需刷新页面，原生浏览器下次 follow 帧刷新；若 2s 内顺序未变可 `location.reload()` 兜底 **仅在用户点击「立即应用顺序」时**）。
-- 总览面板顶部显示「最后更新」，提供刷新按钮（POST? no，GET force=1）。
+- 总览面板顶部显示「最后更新」，提供刷新按钮（GET `?usage=1`）。
 - 所有文案 locale：`locale/zh.json`、`locale/en.json`（key 见现有文件，可新增）。
 
 ## 5. 测试（node 直接跑，无浏览器）
@@ -139,6 +139,9 @@ body: `{ "patch": { "showSidebarEntry": boolean } }` → 返回 snapshot。
 - **包变更**：`dsh.client.inject` 增加 `@deepseek-ai/dsh-client-ui-context-menu`，`inject` 增加 `contextMenus`；
   version → 2.1.0。
 - **测试**：client-render 84 checks failed 0（含菜单 action 字段、pinned 装饰、chip 类、footer.action 不注册）。
+- **变更**：去掉侧边栏工作区标题旁的 Token 标签与 20s 快照轮询。装饰层只保留 pin / note / model，
+  `DECO_ORDER = { pin: 0, note: 1, model: 2 }`；host 的 `?force=1` 改为 `?usage=1`，
+  Token 用量只在打开设置页 / 总览面板时计算一次并缓存，其余快照不扫会话日志。
 
 ### v2.1.1（颜色块反馈）
 

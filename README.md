@@ -28,9 +28,8 @@
 
 - 读取每个会话日志里 `assistant/message` 事件的 `usage`（输入 / 输出 / 总计 / 缓存读 / 缓存写 / 推理），
   **按工作区注册表里的 `sessionIds` 归属**到工作区（不按路径猜，避免同一目录被多个工作区引用时重复计数）。
-- 左侧工作区标题旁显示该工作区的累计 Token；插件面板里给出每个工作区的明细与会话数。
-- 读取采用按会话游标缓存 + 有界并发（4）+ 单会话超时（8s），并释放 observation lease；
-  会话很多时也不会把宿主 IO 打满，也不会撑爆内存。
+- **只在打开设置页 / 总览面板时计算一次**，平时不扫会话日志：不带参数的快照只含工作区元数据，
+  管理界面请求 `?usage=1` 才统计并缓存结果，按钮「刷新」可重算。
 
 ### 3. 原生工作区菜单里的入口
 
@@ -59,7 +58,6 @@
 - **标题备注**：在工作区标题后用括号展示备注，例如 `my-project（支付重构）`。
 - **标题颜色**：单个工作区标题可用颜色区分。面板里以矩形色块选择（悬停显示颜色名），
   另提供「自定义色值」输入框给高级用法（受白名单校验：`#hex` / `rgb()` / `hsl()` / `var(--token)`）。
-- **Token 标签**：工作区标题旁的累计 Token 以圆角标签（chip）形式展示，如 `3.8M`，不再是一行淡文字。
 - **模型徽标**：工作区配置了模型覆盖时显示模型名。
 
 原生能力（分组 / 拖拽重排 / 搜索 / 归档过滤 / 会话行菜单 / hover 卡 / 第三方会话行插槽 / rail 模式 …）
@@ -116,7 +114,7 @@ dsh plugin --profile web add /absolute/path/to/workspace-toolkit-plugin
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/workspace-toolkit/snapshot` | 完整快照（工作区 + 模型目录 + 用量 + 设置）。`?force=1` 跳过缓存 |
+| GET | `/workspace-toolkit/snapshot` | 快照（工作区 + 模型目录 + 设置）；`?usage=1` 才统计 Token 用量并缓存 |
 | POST | `/workspace-toolkit/meta` | 改单个工作区：`{workspaceId, patch}`；或批量：`{items:[{workspaceId,patch}]}` |
 | POST | `/workspace-toolkit/settings` | 改全局设置（保留兼容，当前无界面使用） |
 | GET/POST | `/workspace-toolkit/client-report` | 客户端自报诊断（槽位注册失败、装饰层异常） |

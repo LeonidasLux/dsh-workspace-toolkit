@@ -677,7 +677,7 @@ const backend = internals.createBackend(applyCtx, store)
 async function runBackendChecks() {
   await backend.refresh(true)
   check('snapshot refresh reads store', store.get().snapshot && store.get().snapshot.ok === true)
-  check('snapshot force url', fetchCalls.some((call) => call.url === '/workspace-toolkit/snapshot?force=1'))
+  check('snapshot usage url', fetchCalls.some((call) => call.url === '/workspace-toolkit/snapshot?usage=1'))
   const before = fetchCalls.length
   await backend.patchMeta('ws-a', { note: 'x' })
   const call = fetchCalls[before]
@@ -886,13 +886,12 @@ check('decorator appends pin span for pinned workspace', nativeRows['ws-a'].quer
 check('decorator pin span has svg and title', nativeRows['ws-a'].querySelector('span[data-wtk="pin"]').querySelectorAll('svg').length === 1 && nativeRows['ws-a'].querySelector('span[data-wtk="pin"]').getAttribute('title') === '已置顶')
 check('decorator appends note span', nativeRows['ws-a'].querySelectorAll('span[data-wtk="note"]').length === 1)
 check('decorator note text', nativeRows['ws-a'].querySelector('span[data-wtk="note"]').textContent === '（核心）')
-check('decorator appends tokens span', nativeRows['ws-a'].querySelectorAll('span[data-wtk="tokens"]').length === 1)
-check('decorator tokens compact text', nativeRows['ws-a'].querySelector('span[data-wtk="tokens"]').textContent === '1.2k')
+check('decorator never appends tokens span', nativeRows['ws-a'].querySelectorAll('span[data-wtk="tokens"]').length === 0)
 check('decorator appends model span', nativeRows['ws-a'].querySelector('span[data-wtk="model"]').textContent === 'deepseek-ch…')
 const decoKinds = nativeRows['ws-a'].querySelectorAll('[data-wtk]').map((node) => node.getAttribute('data-wtk')).join(',')
-check('decorator order pin→note→tokens→model', decoKinds === 'pin,note,tokens,model', decoKinds)
-check('decorator tokens span is a chip', nativeRows['ws-a'].querySelector('span[data-wtk="tokens"]').getAttribute('class') === 'wtk-deco-tokens')
-check('decorator chip style present', internals.STYLE_TEXT.includes('span[data-wtk="tokens"]{') && internals.STYLE_TEXT.includes('border-radius:999px') && internals.STYLE_TEXT.includes('span[data-wtk="pin"]{'))
+check('decorator order pin→note→model', decoKinds === 'pin,note,model', decoKinds)
+check('decorator has no token chip style', !internals.STYLE_TEXT.includes('span[data-wtk="tokens"]{'))
+check('decorator pin style present', internals.STYLE_TEXT.includes('span[data-wtk="pin"]{'))
 check('decorator adds toggle-all button', header.querySelectorAll('button[data-wtk="toggle-all"]').length === 1)
 check('decorator leaves empty row untouched', spansFor('ws-b').length === 0)
 const styleTag = nativeDoc.querySelectorAll('style[data-wtk="styles"]')
@@ -901,7 +900,7 @@ check('decorator color rule for ws-a', ((styleTag[0] && styleTag[0].textContent)
 check('decorator no duplicate color rule', ((styleTag[0] && styleTag[0].textContent) || '').split('workspace:ws-a').length === 2)
 
 decorator.decorateNow()
-check('decorate twice keeps 4 spans', spansFor('ws-a').length === 4)
+check('decorate twice keeps 3 spans', spansFor('ws-a').length === 3)
 check('decorate twice keeps one toggle button', header.querySelectorAll('button[data-wtk="toggle-all"]').length === 1)
 
 decoStore.set({
@@ -913,8 +912,8 @@ decoStore.set({
 })
 decorator.decorateNow()
 check('decorator updates note text in place', nativeRows['ws-a'].querySelector('span[data-wtk="note"]').textContent === '（新核心）')
-check('decorator updates tokens text in place', nativeRows['ws-b'].querySelector('span[data-wtk="tokens"]').textContent === '2k')
-check('decorator still 4 spans after update', spansFor('ws-a').length === 4)
+check('decorator keeps no tokens span after usage update', nativeRows['ws-b'].querySelectorAll('span[data-wtk="tokens"]').length === 0)
+check('decorator still 3 spans after update', spansFor('ws-a').length === 3)
 check('decorator still one color rule', nativeDoc.querySelector('style[data-wtk="styles"]').textContent.split('workspace:ws-a').length === 2)
 
 decoStore.set({

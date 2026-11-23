@@ -10,14 +10,14 @@
 //   3. 工作区置顶：通过 workspaceRegistry.insertBefore 改写 Harness 自己的持久化
 //      工作区顺序（原生侧边栏就按这个顺序渲染），不自己模拟排序。
 //   4. 同源路由给 Web 客户端提供快照：
-//        GET  /workspace-toolkit/snapshot[?force=1]  工作区 + 元数据 + 模型目录 + Token 用量
+//        GET  /workspace-toolkit/snapshot[?usage=1]  工作区 + 元数据 + 模型目录（?usage=1 才附带 Token 用量）
 //        POST /workspace-toolkit/meta               修改单个/批量工作区元数据（含置顶）
 //        POST /workspace-toolkit/settings           修改全局设置
 //        POST /workspace-toolkit/client-report      客户端插槽/装饰失败上报
 //        GET  /workspace-toolkit/client-report      读取最近一次上报
 //        GET  /workspace-toolkit/ping               诊断信息
 //   5. 按工作区汇总 Token 用量：读取会话日志的 assistant/message usage，
-//      按 workspaceRegistry 的会话归属累加；live 会话按 cursor 增量缓存。
+//      按 workspaceRegistry 的会话归属累加；只在管理界面请求（?usage=1）时计算并缓存结果。
 import { homedir } from 'node:os'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -511,6 +511,8 @@ export function apply(ctx, config) {
   const pinner = createPinner(ctx, store)
   const modelCache = { at: 0, value: null }
   let lastClientReport = null
+  // Token 用量只在管理界面显式请求时计算；其余快照复用上一次结果，避免全量扫会话日志。
+  let usageState = { at: null, totals: new Map() }
 
   // 监听工作区表变化（新建/删除/拖拽排序）：新建的工作区会被 prepend，
   // 需要把置顶块重新推回队首，否则用户会觉得「置顶失效了」。
@@ -902,16 +904,19 @@ export function apply(ctx, config) {
     }
   }
 
-  async function buildSnapshot(forceUsage) {
+  async function buildSnapshot(withUsage) {
     const state = await store.ensure()
     const global = state.global
-    let records = []
-    try {
-      records = await ctx.sessionQuery.listSessions()
-    } catch (error) {
-      log.warn('[workspace-toolkit] listSessions failed:', error)
+    if (withUsage) {
+      let records = []
+      try {
+        records = await ctx.sessionQuery.listSessions()
+      } catch (error) {
+        log.warn('[workspace-toolkit] listSessions failed:', error)
+      }
+      usageState = { at: new Date().toISOString(), totals: await usage.collect(Array.isArray(records) ? records : []) }
     }
-    const totals = await usage.collect(Array.isArray(records) ? records : [])
+    const totals = usageState.totals
     const catalog = await modelCatalog()
     // 新建工作区会被注册表 prepend 到顺序最前面（dsh-workspace create() 的既定行为），
     // 因此每次取快照前先校正一次置顶顺序，保证置顶工作区始终在最前。
@@ -969,8 +974,7 @@ export function apply(ctx, config) {
         return { available: false, entryId: PI_AI_ENTRY_ID, providers: [] }
       }),
       defaultModel: readDefaultModel(),
-      usageAt: new Date().toISOString(),
-      force: Boolean(forceUsage),
+      usageAt: usageState.at,
     }
   }
 
@@ -1047,8 +1051,8 @@ export function apply(ctx, config) {
     path: ROUTE_PREFIX + '/snapshot',
     handler: route('GET', async (req) => {
       const url = new URL(req.url || ROUTE_PREFIX, 'http://localhost')
-      const force = url.searchParams.get('force') === '1' || url.searchParams.get('refresh') === '1'
-      const snapshot = await buildSnapshot(force)
+      const withUsage = url.searchParams.get('usage') === '1'
+      const snapshot = await buildSnapshot(withUsage)
       const providerIds = snapshot.models && Array.isArray(snapshot.models.providers)
         ? snapshot.models.providers.map((entry) => entry.id).join(',')
         : ''

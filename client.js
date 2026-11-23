@@ -24,7 +24,6 @@ window.__ModuleLoader__.load({
     var PANEL_ID = 'workspace-toolkit'
     var STYLE_ID = PKG_ID + ':styles'
     var DECO_STYLE_ID = 'workspace-toolkit:decorator'
-    var SNAPSHOT_POLL_MS = 20000
     var inject = ['slots', 'locale', 'layout', 'contextMenus']
     var module = { exports: {} }
     var React = null
@@ -66,7 +65,7 @@ window.__ModuleLoader__.load({
       'overview.summary': '全局汇总',       'overview.workspaces': '工作区模型',
       'overview.usage': 'Token 用量汇总',       'overview.hint': '工作区模型只影响之后新建的会话，不会修改已有会话；未配置模型的工作区跟随当前使用的模型。',
       'overview.workspacesEmpty': '还没有工作区。',       'overview.lastUpdated': '上次更新：{time}',
-      'overview.workspacesCount': '工作区数',       'decorator.tokensTitle': '该工作区的 Token 合计',
+      'overview.workspacesCount': '工作区数',
       'decorator.modelTitle': '该工作区配置的模型',       'decorator.toggleExpand': '展开全部工作区',
       'decorator.toggleCollapse': '收起全部工作区',       'status.loading': '加载中…',
       'status.loadFailed': '加载失败：{message}',       'action.failed': '操作失败：{message}',
@@ -126,7 +125,7 @@ window.__ModuleLoader__.load({
       'overview.summary': 'Global summary',       'overview.workspaces': 'Workspace models',
       'overview.usage': 'Token usage',       'overview.hint': 'A workspace model only affects new sessions; sessions without an override follow the current model.',
       'overview.workspacesEmpty': 'No workspaces yet.',       'overview.lastUpdated': 'Last updated: {time}',
-      'overview.workspacesCount': 'Workspaces',       'decorator.tokensTitle': 'Token total for this workspace',
+      'overview.workspacesCount': 'Workspaces',
       'decorator.modelTitle': 'Model configured for this workspace',       'decorator.toggleExpand': 'Expand all workspaces',
       'decorator.toggleCollapse': 'Collapse all workspaces',       'status.loading': 'Loading…',
       'status.loadFailed': 'Failed to load: {message}',       'action.failed': 'Action failed: {message}',
@@ -217,7 +216,6 @@ window.__ModuleLoader__.load({
       '[role="treeitem"][data-row-key^="workspace:"] [class*="_title"]{flex:0 1 auto;}',
       'span[data-wtk="note"]{flex:0 1 auto;min-width:0;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:20px;color:var(--dsw-alias-label-tertiary);}',
       'span[data-wtk="pin"]{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-brand-primary);}',
-      'span[data-wtk="tokens"]{flex:0 0 auto;display:inline-flex;align-items:center;height:16px;padding:0 6px;border-radius:999px;background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);font-size:10.5px;line-height:16px;font-variant-numeric:tabular-nums;}',
       'span[data-wtk="model"]{flex:0 0 auto;max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;line-height:20px;color:var(--dsw-alias-label-tertiary);}',
       '.wtk-ws-block[data-wtk-flash="1"]{border-radius:8px;box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);transition:box-shadow .2s;}',
       'button[data-wtk="toggle-all"]{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;flex:0 0 auto;}',
@@ -405,9 +403,9 @@ window.__ModuleLoader__.load({
         }
         return data
       }
-      function refresh(force) {
+      function refresh(withUsage) {
         if (inflight) return inflight
-        inflight = request('/snapshot' + (force ? '?force=1' : ''))
+        inflight = request('/snapshot' + (withUsage ? '?usage=1' : ''))
           .then(function (data) {
             applySnapshot(data)
             return data
@@ -1232,7 +1230,8 @@ window.__ModuleLoader__.load({
       var focusRequest = useFocusRequest()
       useFocusEffect(focusRequest)
       React.useEffect(function () {
-        if (!snapshot) backend.refresh(false).catch(function () {})
+        // 进入管理界面才计算 Token 用量，平时不扫会话日志。
+        backend.refresh(true).catch(function () {})
       }, [])
       function openOverview() {
         try {
@@ -1308,7 +1307,8 @@ window.__ModuleLoader__.load({
       var actionError = errorPair[0]
       var setActionError = errorPair[1]
       React.useEffect(function () {
-        if (!snapshot) backend.refresh(false).catch(function () {})
+        // 进入管理界面才计算 Token 用量，平时不扫会话日志。
+        backend.refresh(true).catch(function () {})
       }, [])
       function run(promise) {
         setActionError('')
@@ -1422,7 +1422,7 @@ window.__ModuleLoader__.load({
     var LIST_AREA_SELECTOR = '[class*="_listArea"]'
     var PROJECT_TEXT_SELECTOR = '[class*="_projectText"]'
     var TITLE_SELECTOR = '[class*="_title"]'
-    var DECO_ORDER = { pin: 0, note: 1, tokens: 2, model: 3 }
+    var DECO_ORDER = { pin: 0, note: 1, model: 2 }
     function cssAttrEscape(value) {
       return String(value == null ? '' : value).replace(/["\\]/g, '\\$&')
     }
@@ -1431,7 +1431,6 @@ window.__ModuleLoader__.load({
     }
     function createDecorator(ctx, store, backend, t, report, doc) {
       var d = doc || (typeof document !== 'undefined' ? document : null)
-      var pollTimer = null
       var retryTimer = null
       var reprobeTimer = null
       var rafHandle = null
@@ -1583,13 +1582,10 @@ window.__ModuleLoader__.load({
         if (!projectText) return
         var title = qs(projectText, TITLE_SELECTOR)
         if (!title) return
-        var usage = workspaceUsage(workspace)
-        var tokenText = usage.totalTokens > 0 ? formatCompact(usage.totalTokens) : ''
         var noteText = workspace.note ? t('note.paren', { note: workspace.note }) : ''
         var modelTextValue = workspace.model && workspace.model.model ? truncate(workspace.model.model, 12) : ''
         syncPin(projectText, workspace)
         setSpanText(projectText, 'note', workspace.workspaceId, noteText, workspace.note ? workspace.note : '', '')
-        setSpanText(projectText, 'tokens', workspace.workspaceId, tokenText, t('decorator.tokensTitle') + ': ' + formatInt(usage.totalTokens), 'wtk-deco-tokens')
         setSpanText(projectText, 'model', workspace.workspaceId, modelTextValue,
           t('decorator.modelTitle') + ': ' + (workspace.model ? workspace.model.provider + '/' + workspace.model.model : ''), '')
       }
@@ -1737,23 +1733,16 @@ window.__ModuleLoader__.load({
             }, 30000)
           }
         }, 3000)
-        pollTimer = setInterval(function () {
-          if (disposed) return
-          if (d && d.visibilityState && d.visibilityState !== 'visible') return
-          if (backend && typeof backend.refresh === 'function') backend.refresh(false).catch(function () {})
-        }, SNAPSHOT_POLL_MS)
       }
       function dispose() {
         if (disposed) return
         disposed = true
-        if (pollTimer !== null) clearInterval(pollTimer)
         if (retryTimer !== null) clearTimeout(retryTimer)
         if (reprobeTimer !== null) clearTimeout(reprobeTimer)
         if (rafHandle !== null) {
           if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafHandle)
           else clearTimeout(rafHandle)
         }
-        pollTimer = null
         retryTimer = null
         reprobeTimer = null
         rafHandle = null
