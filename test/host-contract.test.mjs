@@ -1,4 +1,4 @@
-// Host-half contract test for @local/workspace-toolkit (no Harness boot).
+// Host-half contract test for @ylhsweet/dsh-workspace-toolkit (no Harness boot).
 //
 // 覆盖：路由注册、snapshot 形状、meta 校验（note/color/model）、置顶经
 // workspaceRegistry.insertBefore 改写原生顺序、settings 开关、按会话归属的 Token 汇总、

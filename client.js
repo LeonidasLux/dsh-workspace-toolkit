@@ -15,10 +15,10 @@
 //   5. 原生工作区区域的「追加式装饰层」：只在原生节点内部 append 自建节点，
 //      不注册、不替换原生工作区区域，也不修改原生 React 树与节点属性。
 window.__ModuleLoader__.load({
-  id: '@local/workspace-toolkit',
+  id: '@ylhsweet/dsh-workspace-toolkit',
   factory: function (require) {
     'use strict'
-    var PKG_ID = '@local/workspace-toolkit'
+    var PKG_ID = '@ylhsweet/dsh-workspace-toolkit'
     var NS = 'workspace-toolkit'
     var ROUTE_PREFIX = '/workspace-toolkit'
     var PANEL_ID = 'workspace-toolkit'

@@ -1,6 +1,6 @@
 // 旧版插件（@local/workspace-model-panel）数据迁移测试。
 // 场景：profile 里只有旧的 plugin-data/workspace-model-panel.json，
-// 新版（@local/workspace-toolkit）第一次启动应把数据读进来、写出新文件，且旧文件保留。
+// 新版（@ylhsweet/dsh-workspace-toolkit）第一次启动应把数据读进来、写出新文件，且旧文件保留。
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { rm, mkdir, readFile, writeFile } from 'node:fs/promises'
 

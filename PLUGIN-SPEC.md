@@ -1,6 +1,6 @@
 # workspace-toolkit 插件实现规格（Lead 定稿，唯一契约来源）
 
-包：`@local/workspace-toolkit`，目录 `~/dsh-workspace-toolkit-plugin`
+发布包：`@ylhsweet/dsh-workspace-toolkit`，目录 `~/dsh-workspace-toolkit-plugin`
 目标 profile：`web`（DSH_PROFILE=web，DSH_PROFILE_DIR=~/.dsh/profiles/web）
 
 ## 0. 需求（用户原话要点，不可偏离）
@@ -14,9 +14,9 @@
 - 原生侧边栏的 React 树不改；只允许**追加式** DOM 装饰：向原生节点**内部 appendChild 自己创建的节点**、给自己创建的 `<style>` 打标记、读取原生节点属性。不改原生节点的 class/子节点顺序/其他属性。
 - 客户端模块**不得 import** 任何 `@deepseek-ai/dsh-client-*` 包；只能通过 factory 的 `require` 拿 `react`、`react/jsx-runtime`，以及通过注入的 service（slots/locale/workspaces/sessions/uiWorkspace/layout）工作；`require` 若失败要 try/catch 降级。
 - 可见文案全部走 `ctx.locale`（ns `workspace-toolkit`，zh + en 两份 `locale/*.json`），不得硬编码中文。
-- 样式只用主题 token（`--dsw-alias-*`、`--dsw-radius-*`、`--dsw-specific-*`），自建样式放进 `<style data-plugin-css="@local/workspace-toolkit/styles">`，卸载时移除。
+- 样式只用主题 token（`--dsw-alias-*`、`--dsw-radius-*`、`--dsw-specific-*`），自建样式放进 `<style data-plugin-css="@ylhsweet/dsh-workspace-toolkit/styles">`，卸载时移除。
 - 所有订阅/observer/timer/节点都必须在 `ctx.effect` 里登记 cleanup；卸载后页面不留任何本插件节点（`[data-wtk]`）。
-- 客户端模块形态（沿用现有文件）：`window.__ModuleLoader__.load({ id: '@local/workspace-toolkit', factory: (require) => module })`；导出 `inject` 数组与 `apply(ctx)`。
+- 客户端模块形态（沿用现有文件）：`window.__ModuleLoader__.load({ id: '@ylhsweet/dsh-workspace-toolkit', factory: (require) => module })`；导出 `inject` 数组与 `apply(ctx)`。
 
 ## 2. 已验证的运行时事实（2026-11-11 从 asar 源码实读，可作为事实使用）
 - **模型**：Agent 实例成员 `agent.model` 是 `AgentModel`（dsh-agent-loop `lib/index.js:545` `this.model = new AgentModel(...)`）。API：`current(): ModelSelection | undefined`、`select(selection)` —— `select` 会 `session.append('model/selection', {provider, model, reasoningEffort?})`（durable 事件，投影 `modelSelection` 的 `pending`，下一步请求即生效）。`model/selection` 在 `KNOWN_SESSION_EVENT_TYPES` 内。
@@ -257,7 +257,7 @@ reconcile / HMR 生效）；API key 走 `credentials.set`，配置里只留 `api
 
 - **原因**：插件能力已不止「模型 + 用量」，还包括供应商管理、左侧列表的各种改造，后续还会继续扩；
   旧名把范围说窄了。
-- **改动**：包名 `@local/workspace-model-panel` → `@local/workspace-toolkit`；Loader entry id
+- **改动**：包名 `@local/workspace-model-panel` → `@ylhsweet/dsh-workspace-toolkit`；Loader entry id
   `workspace-model-panel` → `workspace-toolkit`；路由前缀 `/workspace-toolkit`；locale 命名空间、
   `contextMenu.icon` key、settings.section id、CSS 类名前缀 `wmp-` → `wtk-`、data 属性
   `data-wmp` → `data-wtk`；中文显示名「工作区工具箱」（EN `Workspace toolkit`）。

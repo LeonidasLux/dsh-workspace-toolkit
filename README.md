@@ -93,11 +93,17 @@
 ## 安装
 
 ```bash
-# 在 DSH 中（推荐）
+# 从 NPM 安装（推荐）
+dsh plugin --profile web add @ylhsweet/dsh-workspace-toolkit
+```
+
+也可以在本地开发时直接安装当前目录：
+
+```bash
 dsh plugin --profile web add /absolute/path/to/workspace-toolkit-plugin
 ```
 
-或用宿主自带的插件管理器把该目录作为本地 bundle 安装。安装后刷新 Web 页面即可。
+安装后刷新 Web 页面即可。
 
 ## 数据与存储
 

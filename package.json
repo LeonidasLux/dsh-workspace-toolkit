@@ -1,8 +1,26 @@
 {
-  "name": "@local/workspace-toolkit",
-  "version": "3.0.0",
-  "private": true,
+  "name": "@ylhsweet/dsh-workspace-toolkit",
+  "version": "1.0.1",
   "description": "工作区工具箱：围绕 DSH 工作区的一站式增强——按工作区配置模型、按工作区汇总 Token 用量、自定义模型供应商，并以原生槽位 + 原生右键菜单 + 追加式装饰增强左侧工作区（展开/收起全部、置顶、备注、标题颜色、Token 标签），不替换任何原生界面",
+  "keywords": [
+    "dsh",
+    "deepseek",
+    "deepseek-harness",
+    "plugin",
+    "workspace",
+    "token-usage",
+    "model-provider"
+  ],
+  "homepage": "https://github.com/LeonidasLux/dsh-workspace-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/LeonidasLux/dsh-workspace-toolkit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LeonidasLux/dsh-workspace-toolkit.git"
+  },
+  "author": "LeonidasLux",
+  "license": "UNLICENSED",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -20,8 +38,17 @@
     "icon.svg",
     "test/host-contract.test.mjs",
     "test/client-render.test.mjs",
+    "test/legacy-migration.test.mjs",
     "PLUGIN-SPEC.md"
   ],
+  "scripts": {
+    "test": "node --check index.js && node --check client.js && node test/host-contract.test.mjs && node test/client-render.test.mjs && node test/legacy-migration.test.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

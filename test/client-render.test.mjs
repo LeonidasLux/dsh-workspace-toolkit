@@ -443,7 +443,7 @@ new Function('window', 'require', factorySource)(fakeWindow, moduleRequire)
 const exported = captured.factory(moduleRequire)
 const internals = exported.__internals
 
-check('module shape name', exported.name === '@local/workspace-toolkit')
+check('module shape name', exported.name === '@ylhsweet/dsh-workspace-toolkit')
 check('inject list', Array.isArray(exported.inject) && exported.inject.join(',') === 'slots,locale,layout,contextMenus')
 check('apply is exported', typeof exported.apply === 'function')
 check('no sidebar.workspaces registration in client.js', source.indexOf('sidebar.workspaces') === -1)
